@@ -397,16 +397,14 @@ const App =  {
     try {
       var spinner = this.showSpinner();
       const sender = klaytn.selectedAddress;
-      const feePayer = cav.klay.accounts.wallet.add(
-        "0x..."
-      );
+      await cav.klay.accounts.wallet.add("0x7f7937639237bea338732fb5d31cbb587156f87bcd2152bd2cf6bc3a80b5a78e","0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226");      
 
       // using the promise
       const { rawTransaction: senderRawTransaction } =
         await cav.klay.accounts.signTransaction(
           {
             type: "FEE_DELEGATED_SMART_CONTRACT_EXECUTION",
-            from: sender.address,
+            from: sender,
             to: DEPLOYED_ADDRESS_TOKENSALES,
             data: tsContract.methods
               .setForSale(tokenId, cav.utils.toPeb(amount, "KLAY"))
@@ -414,13 +412,12 @@ const App =  {
             gas: "500000",
             value: cav.utils.toPeb("0", "KLAY"), // payable 타입일때는 1
           },
-          sender.privateKey
         );
 
       cav.klay
         .sendTransaction({
           senderRawTransaction: senderRawTransaction,
-          feePayer: feePayer.address,
+          feePayer: "0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226",
         })
         .then(function (receipt) {
           if (receipt.transactionHash) {
@@ -444,28 +441,25 @@ const App =  {
     try {
       var spinner = this.showSpinner();
       const sender = this.getWallet();
-      const feePayer = cav.klay.accounts.wallet.add(
-        "0x..."
-      );
+      await cav.klay.accounts.wallet.add("0x7f7937639237bea338732fb5d31cbb587156f87bcd2152bd2cf6bc3a80b5a78e","0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226");
 
       // using the promise
       const { rawTransaction: senderRawTransaction } =
         await cav.klay.accounts.signTransaction(
           {
             type: "FEE_DELEGATED_SMART_CONTRACT_EXECUTION",
-            from: sender.address,
+            from: sender,
             to: DEPLOYED_ADDRESS_TOKENSALES,
             data: tsContract.methods.purchaseToken(tokenId).encodeABI(),
             gas: "500000",
             value: price, // payable 타입일때는 1
           },
-          sender.privateKey
         );
 
       cav.klay
         .sendTransaction({
           senderRawTransaction: senderRawTransaction,
-          feePayer: feePayer.address,
+          feePayer: "0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226",
         })
         .then(function (receipt) {
           if (receipt.transactionHash) {
