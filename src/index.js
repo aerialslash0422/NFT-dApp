@@ -34,16 +34,7 @@ const App =  {
     try{
       const accounts = await window.klaytn.enable();
       const walletInstance = accounts[0];
-      console.log(walletInstance);
-
-      const balance = await cav.klay.getBalance(walletInstance);
-      console.log(balance);
-
-      const networkVersion = window.klaytn.networkVersion;
-      console.log(networkVersion);
       this.changeUI(walletInstance);
-      const wallet = cav.klay.accounts.wallet.getAccount(walletInstance);
-      console.log(wallet)
 
       sessionStorage.setItem("walletInstance", JSON.stringify(walletInstance));
 
@@ -56,7 +47,10 @@ const App =  {
     const walletFromSession = sessionStorage.getItem("walletInstance");
     if (walletFromSession) {
       try {
-        this.changeUI(JSON.parse(walletFromSession));
+
+        if (await klaytn._kaikas.isUnlocked()){
+          this.changeUI(JSON.parse(walletFromSession));
+        }
       } catch (e) {
         sessionStorage.removeItem("walletInstance");
       }
@@ -130,11 +124,11 @@ const App =  {
   //   };
   // },
 
-  getWallet: function () {
-    if (cav.klay.accounts.wallet.length) {
-      return cav.klay.accounts.wallet[0];
-    }
-  },
+  // getWallet: function () {
+    // if (cav.klay.accounts.wallet.length) {
+      // return cav.klay.accounts.wallet[0];
+    // }
+  // },
 
   changeUI: async function (walletInstance) {
     // $("#loginModal").modal("hide");
@@ -204,7 +198,7 @@ const App =  {
 
   mintYTT: async function (videoId, author, dateCreated, hash) {
     const sender = klaytn.selectedAddress;
-    const feePayer = "0x7f7937639237bea338732fb5d31cbb587156f87bcd2152bd2cf6bc3a80b5a78e"
+    await cav.klay.accounts.wallet.add("0x7f7937639237bea338732fb5d31cbb587156f87bcd2152bd2cf6bc3a80b5a78e","0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226");
     const transactionParameter = 
       {
         type: "FEE_DELEGATED_SMART_CONTRACT_EXECUTION",
@@ -220,54 +214,38 @@ const App =  {
           .encodeABI(),
         gas: "500000",
         value: cav.utils.toPeb("0", "KLAY"), // payable 타입일때는 1
-        feePayer
-      }
-    // using the promise
-    
-    await klaytn.sendAsync({
-      jsonrpc : "2.0",
-      method : 'klay_signTransaction',
-      params : [transactionParameter],
-      from : klaytn.selectedAddress
-    }, (err, result) => console.log(err, result))
-    
-    //const { rawTransaction: senderRawTransaction } = await cav.klay.accounts.signTransaction(transactionParameter);
-    //  // sender.privateKey
+      };
 
-    // await klaytn.sendAsync({
-      // method : 'klay_sendTransactionAsFeePayer',
-      // params : [transactionParameterFD],
-      // from : klaytn.selectedAddress
-    // }, (err, result) => console.log(err, result))
+    const { rawTransaction: senderRawTransaction } = await cav.klay.signTransaction(transactionParameter);
     
-    // cav.klay
-    //   .sendTransaction({
-    //     senderRawTransaction: senderRawTransaction,
-    //     feePayer: feePayer.address,
-    //   })
-    //   .then(function (receipt) {
-    //     if (receipt.transactionHash) {
-    //       console.log("https://ipfs.infura.io/ipfs/" + hash);
-    //       alert(receipt.transactionHash);
-    //       location.reload();
-    //     }
-    //   });
+    await cav.klay
+      .sendTransaction({
+        senderRawTransaction: senderRawTransaction,
+        feePayer : "0xc3501ce32ceb32c861fcb7d0f6f43ee69a25f226",
+      })
+      .then(function (receipt) {
+        if (receipt.transactionHash) {
+          console.log("https://ipfs.infura.io/ipfs/" + hash);
+          alert(receipt.transactionHash);
+          location.reload();
+        }
+      });
   },
 
   displayMyTokensAndSale: async function (walletInstance) {
-    var balance = parseInt(await this.getBalanceOf(walletInstance.address));
+    var balance = parseInt(await this.getBalanceOf(walletInstance));
 
     if (balance === 0) {
       $("#myTokens").text("현재 보유한 토큰이 없습니다");
     } else {
       var isApproved = await this.isApprovedForAll(
-        walletInstance.address,
+        walletInstance,
         DEPLOYED_ADDRESS_TOKENSALES
       );
       for (var i = 0; i < balance; i++) {
         (async () => {
           var tokenId = await this.getTokenOfOwnerByIndex(
-            walletInstance.address,
+            walletInstance,
             i
           );
           var tokenUri = await this.getTokenUri(tokenId);
@@ -352,7 +330,7 @@ const App =  {
       template
         .find(".token-price")
         .text(cav.utils.fromPeb(price, "KLAY") + " KLAY");
-      if (owner.toUpperCase() === walletInstance.address.toUpperCase()) {
+      if (owner.toUpperCase() === walletInstance.toUpperCase()) {
         template.find(".btn-buy").attr("disabled", true);
       } else {
         template.find(".btn-buy").attr("disabled", false);
@@ -366,12 +344,12 @@ const App =  {
 
   approve: function () {
     this.showSpinner();
-    const walletInstance = this.getWallet();
+    const walletInstance = klaytn.selectedAddress;
 
     yttContract.methods
       .setApprovalForAll(DEPLOYED_ADDRESS_TOKENSALES, true)
       .send({
-        from: walletInstance.address,
+        from: walletInstance,
         gas: "250000",
       })
       .then(function (receipt) {
@@ -383,12 +361,12 @@ const App =  {
 
   cancelApproval: async function () {
     this.showSpinner();
-    const walletInstance = this.getWallet();
+    const walletInstance = klaytn.selectedAddress;
 
     const receipt = await yttContract.methods
       .setApprovalForAll(DEPLOYED_ADDRESS_TOKENSALES, false)
       .send({
-        from: walletInstance.address,
+        from: walletInstance,
         gas: "250000",
       });
     if (receipt.transactionHash) {
@@ -399,7 +377,7 @@ const App =  {
 
   checkApproval: async function (walletInstance) {
     var isApproval = await this.isApprovedForAll(
-      walletInstance.address,
+      walletInstance,
       DEPLOYED_ADDRESS_TOKENSALES
     );
     if (isApproval) {
@@ -418,7 +396,7 @@ const App =  {
 
     try {
       var spinner = this.showSpinner();
-      const sender = this.getWallet();
+      const sender = klaytn.selectedAddress;
       const feePayer = cav.klay.accounts.wallet.add(
         "0x..."
       );
@@ -502,13 +480,13 @@ const App =  {
   },
 
   onCancelApprovalSuccess: async function (walletInstance) {
-    var balance = parseInt(await this.getBalanceOf(walletInstance.address));
+    var balance = parseInt(await this.getBalanceOf(walletInstance));
 
     if (balance > 0) {
       var tokensOnSale = [];
       for (var i = 0; i < balance; i++) {
         var tokenId = await this.getTokenOfOwnerByIndex(
-          walletInstance.address,
+          walletInstance,
           i
         );
         var price = await this.getTokenPrice(tokenId);
@@ -518,7 +496,7 @@ const App =  {
         const receipt = await tsContract.methods
           .removeTokenOnSale(tokensOnSale)
           .send({
-            from: walletInstance.address,
+            from: walletInstance,
             gas: "250000",
           });
         if (receipt.transactionHash) {
