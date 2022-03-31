@@ -2,6 +2,8 @@
 
 Klaytn ERC721 BApp
 
+login 방식 kaikas로 수정
+
 ## 사전준비
 
 > 코드내 private key 를 자신의 키로 모두 변경합니다.
